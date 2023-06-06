@@ -2,7 +2,7 @@ using BepInEx;
 using BepInEx.IL2CPP;
 using HarmonyLib;
 
-namespace crabgame_mod_template
+namespace party_crab
 {
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public class Plugin : BasePlugin
