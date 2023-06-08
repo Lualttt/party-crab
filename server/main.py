@@ -323,7 +323,7 @@ def connect(sid, _environ):
 
 
 @sio.event
-def disconnect(sid):
+async def disconnect(sid):
     print(f"(disconnect) {sid}")
     
     # checks if user/party still exists and destroys them if so
@@ -331,10 +331,10 @@ def disconnect(sid):
         parties[users[sid]]["party_count"] -= 1
 
         if parties[users[sid]]["party_host"] == sid:
-            sio.emit("disbanded", {"message": f"somebody disbanded the party"}, room=users[sid])
+            await sio.emit("disbanded", {"message": f"somebody disbanded the party"}, room=users[sid])
             parties.pop(users[sid])
 
-        sio.emit("left", {"message": "somebody left the party"}, room=users[sid])
+        await sio.emit("left", {"message": "somebody left the party"}, room=users[sid])
         users.pop(sid)
 
 

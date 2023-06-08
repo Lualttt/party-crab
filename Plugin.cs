@@ -1,10 +1,9 @@
-using System;
 using BepInEx;
 using BepInEx.IL2CPP;
 using HarmonyLib;
 using System.Collections.Generic;
 using qol_core;
-using SocketIOSharp.Client;
+using SocketIOClient;
 
 namespace party_crab
 {
@@ -13,9 +12,9 @@ namespace party_crab
     public class Plugin : BasePlugin
     {
         public static Mod modInstance;
-        public static SocketIOClient client;
+        public static SocketIO client;
 
-        public static Tuple<string, ushort> party_server = new("localhost", 8080);
+        public static string party_server = "localhost:8080";
 
         public override void Load()
         {
@@ -32,12 +31,11 @@ namespace party_crab
         {
             if (arguments[1] == "server")
             {
-                if (arguments.Count >= 4)
+                if (arguments.Count >= 3)
                 {
-                    party_server = new(arguments[2], ushort.Parse(arguments[3]));
+                    party_server = arguments[2];
                 }
-                client.Close();
-                SendMessage($"party server -> {party_server.Item1}:{party_server.Item2}", 1);
+                SendMessage($"party server -> {party_server}", 1);
                 Client.Connect();
             }
 
@@ -73,6 +71,41 @@ namespace party_crab
             }
 
             ChatBox.Instance.ForceMessage($"<color=#e563ff>(</color>{p_color}P</color><color=#e563ff>) {message}</color>");
+        }
+
+        [HarmonyPatch(typeof(ChatBox), nameof(ChatBox.AppendMessage))]
+        [HarmonyPriority(999)]
+        [HarmonyPrefix]
+        public static bool OnAppendMessage(ChatBox __instance)
+        {
+            if (client.Connected)
+                return false;
+            return true;
+        }
+
+        [HarmonyPatch(typeof(ClientSend), nameof(ClientSend.SendChatMessage))]
+        [HarmonyPriority(999)]
+        [HarmonyPrefix]
+        public static bool OnSendMessage(ChatBox __instance)
+        {
+            if (client.Connected)
+                return false;
+            return true;
+        }
+
+        [HarmonyPatch(typeof(ChatBox), nameof(ChatBox.SendMessage))]
+        [HarmonyPrefix]
+        public static void OnMessage(ChatBox __instance, string __0)
+        {
+            if (client.Connected)
+            {
+                var data = new MessageDTO
+                {
+                    username = "Lualt",
+                    message = __0
+                };
+                client.EmitAsync("message", data);
+            }
         }
     }
 }
