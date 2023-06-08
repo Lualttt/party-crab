@@ -331,10 +331,10 @@ def disconnect(sid):
         parties[users[sid]]["party_count"] -= 1
 
         if parties[users[sid]]["party_host"] == sid:
-            await sio.emit("disbanded", {"message": f"somebody disbanded the party"}, room=users[sid])
+            sio.emit("disbanded", {"message": f"somebody disbanded the party"}, room=users[sid])
             parties.pop(users[sid])
 
-        await sio.emit("left", {"message": "somebody left the party"}, room=users[sid])
+        sio.emit("left", {"message": "somebody left the party"}, room=users[sid])
         users.pop(sid)
 
 

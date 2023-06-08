@@ -102,6 +102,29 @@ return
 	}
 }
 ```
+**promote**
+emit
+```json
+{
+    "party_id": "<6 digit hex>",
+    "new_host": "<6 digit of sid>"
+}
+```
+return
+```json
+{
+	"successful": true,
+	"data": {}
+}
+```
+```json
+{
+	"successful": false,
+	"data": {
+		"error": "couldn't find user"
+	}
+}
+```
 ---
 ---
 ---
@@ -161,5 +184,20 @@ return
 {
 	"username": "<crab game username>",
 	"message": "Hello, world!"
+}
+```
+---
+**promoted**
+emit
+```json
+{
+    "old_host": "<crab game username>",
+    "new_host": "<crab game username>"
+}
+```
+return
+```json
+{
+	"message": "<old_host> promoted <new_host>"
 }
 ```
