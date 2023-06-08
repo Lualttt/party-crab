@@ -26,6 +26,12 @@ async def host(sid, data):
 
     data_keys = list(data.keys())
 
+    # checks if they are already in a party
+    if sid in users:
+        print("^- in a party already")
+        await sio.emit("host", {"successful": False, "data": {"error": "in a party already"}})
+        return
+
     # checks if "party_name", "party_max", "party_public" are in data
     if "party_name" not in data_keys or "party_max" not in data_keys or "party_public" not in data_keys:
         print("^- wrong host format")
@@ -79,6 +85,12 @@ async def disband(sid, data):
         await sio.emit("disband", {"successful": False, "data": {"error": "wrong disband data type"}})
         return
 
+    # checks if they are in a party
+    if sid not in users:
+        print("^- not in a party")
+        await sio.emit("disband", {"successful": False, "data": {"error": "not in a party"}})
+        return
+
     # checks if party exists
     if not data["party_id"] in parties:
         print("^- couldn't find party")
@@ -113,6 +125,12 @@ async def join(sid, data):
         await sio.emit("join", {"successful": False, "data": {"error": "wrong join data type"}})
         return
 
+    # checks if they are already in a party
+    if sid in users:
+        print("^- in a party already")
+        await sio.emit("join", {"successful": False, "data": {"error": "in a party already"}})
+        return
+
     # checks if party exists
     if not data["party_id"] in parties:
         print("^- couldn't find party")
@@ -145,6 +163,12 @@ async def leave(sid, data):
         await sio.emit("leave", {"successful": False, "data": {"error": "wrong leave data type"}})
         return
 
+    # checks if they are in a party
+    if sid not in users:
+        print("^- not in a party")
+        await sio.emit("leave", {"successful": False, "data": {"error": "not in a party"}})
+        return
+
     # checks if party exists
     if not data["party_id"] in parties:
         print("^- couldn't find party")
@@ -158,6 +182,58 @@ async def leave(sid, data):
     parties[data["party_id"]]["party_count"] -= 1
     users.pop(sid)
     sio.leave_room(sid, data["party_id"])
+    await sio.emit("leave", {"successful": True, "data": {}})
+
+
+@sio.event
+async def promote(sid, data):
+    print(f"(promote) {sid}: {data}")
+
+    # checks if "party_id" and "new_host" are in data
+    if "party_id" not in data or "new_host" not in data:
+        print("^- wrong promote format")
+        await sio.emit("promote", {"successful": False, "data": {"error": "wrong promote format"}})
+        return
+
+    # checks if "party_id" and "new_host" are a str's
+    if type(data["party_id"]) != str and type(data["new_host"]) != str:
+        print("^- wrong promote data type")
+        await sio.emit("promote", {"successful": False, "data": {"error": "wrong promote data type"}})
+        return
+
+    for user in users:
+        if user.endswith(data["new_host"]):
+            new_host = user
+            break
+    else:
+        print("^- couldn't find user")
+        await sio.emit("promote", {"successful": False, "data": {"error": "couldn't find user"}})
+        return
+
+    # checks if user is in the party
+    if sid not in users:
+        print("^- not in a party")
+        await sio.emit("promote", {"successful": False, "data": {"error": "not in a party"}})
+        return
+
+    # checks if party exists
+    if not data["party_id"] in parties:
+        print("^- couldn't find party")
+        await sio.emit("promote", {"successful": False, "data": {"error": "couldn't find party"}})
+        return
+
+    if users[new_host] != users[sid]:
+        print("^- not in the same party")
+        await sio.emit("promote", {"successful": False, "data": {"error": "not in the same party"}})
+        return
+
+    # checks if you are the party host
+    if not sid == parties[data["party_id"]]["party_host"]:
+        print("^- you aren't the party host")
+        await sio.emit("promote", {"successful": False, "data": {"error": "you aren't the party host"}})
+        return
+
+    parties[data["party_id"]]["party_host"] = new_host
     await sio.emit("leave", {"successful": True, "data": {}})
 
 ###################
@@ -224,17 +300,43 @@ async def message(sid, data):
 
     await sio.emit("message", {"username": username,"message": data["message"]}, room=users[sid])
 
+
+@sio.event
+async def promoted(sid, data):
+    old_host = "somebody"
+    new_host = "somebody"
+
+    if "old_host" in data and "new_host" in data:
+        old_host = data["old_host"]
+        new_host = data["new_host"]
+
+    if sid not in users:
+        return
+
+    await sio.emit("promoted", {"message": f"{old_host} promoted {new_host}"}, room=users[sid])
+
 #####
 
 @sio.event
 def connect(sid, _environ):
     print(f"(connect) {sid}")
-    
+
 
 @sio.event
 def disconnect(sid):
     print(f"(disconnect) {sid}")
     
+    # checks if user/party still exists and destroys them if so
+    if sid in users:
+        parties[users[sid]]["party_count"] -= 1
+
+        if parties[users[sid]]["party_host"] == sid:
+            await sio.emit("disbanded", {"message": f"somebody disbanded the party"}, room=users[sid])
+            parties.pop(users[sid])
+
+        await sio.emit("left", {"message": "somebody left the party"}, room=users[sid])
+        users.pop(sid)
+
 
 @sio.on("*")
 async def catch_all(event, sid, data):
@@ -246,3 +348,7 @@ async def catch_all(event, sid, data):
 
 if __name__ == "__main__":
     web.run_app(app)
+
+
+# POSSIBLE: while leaving promote someone else instead of disbanding the party
+# POSSIBLE: save crab game username so we never have the "somebody" problem

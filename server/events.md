@@ -147,3 +147,19 @@ return
 	"message": "somebody disbanded the party"
 }
 ```
+---
+**message**
+emit
+```json
+{
+    "username": "<crab game username>",
+    "message": "Hello, world!"
+}
+```
+return
+```json
+{
+	"username": "<crab game username>",
+	"message": "Hello, world!"
+}
+```
