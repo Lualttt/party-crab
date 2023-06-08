@@ -1,15 +1,21 @@
+using System;
 using BepInEx;
 using BepInEx.IL2CPP;
 using HarmonyLib;
 using System.Collections.Generic;
 using qol_core;
+using SocketIOSharp.Client;
 
 namespace party_crab
 {
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
+    [BepInDependency("qol-core")]
     public class Plugin : BasePlugin
     {
         public static Mod modInstance;
+        public static SocketIOClient client;
+
+        public static Tuple<string, ushort> party_server = new("localhost", 8080);
 
         public override void Load()
         {
@@ -24,10 +30,23 @@ namespace party_crab
 
         public static bool PartyCommand(List<string> arguments)
         {
-            SendMessage("test");
-            SendMessage("Lualt: Hello, world!", 1);
-            SendMessage("created lobby", 2);
-            SendMessage("could'nt find user", 3);
+            if (arguments[1] == "server")
+            {
+                if (arguments.Count >= 4)
+                {
+                    party_server = new(arguments[2], ushort.Parse(arguments[3]));
+                }
+                client.Close();
+                SendMessage($"party server -> {party_server.Item1}:{party_server.Item2}", 1);
+                Client.Connect();
+            }
+
+            if (arguments[1] == "demo") {
+                SendMessage("test");
+                SendMessage("Lualt: Hello, world!", 0);
+                SendMessage("created lobby", 1);
+                SendMessage("couldn't find user", 2);
+            }
 
             return true;
         }
@@ -35,7 +54,7 @@ namespace party_crab
         public static void SendMessage(string message, int value = -1)
         {
             // purple
-            string p_color = "<color=#bc2ed9>";
+            string p_color = "<color=#e563ff>";
 
             // yellow
             if (value == 0)
@@ -53,7 +72,7 @@ namespace party_crab
                 p_color = "<color=#fa2f28>";
             }
 
-            ChatBox.Instance.ForceMessage($"<color=#bc2ed9>(</color>{p_color}P</color><color=#bc2ed9>{message}</color>");
+            ChatBox.Instance.ForceMessage($"<color=#e563ff>(</color>{p_color}P</color><color=#e563ff>) {message}</color>");
         }
     }
 }
