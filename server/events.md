@@ -37,9 +37,7 @@ return
 ```json
 {
 	"successful": true,
-	"data": {
-		"party_id": "<6 digit hex>"
-	}
+	"data": {}
 }
 ```
 ```json
@@ -67,7 +65,8 @@ return
     "party_max": 6,
     "party_count": 1,
     "party_public": false,
-    "party_host": "<host sid>"
+    "party_host": "<host sid>",
+    "party_id": "<6 digit hex>"
 	}
 }
 ```

@@ -42,6 +42,11 @@ namespace party_crab
         }
         public static bool PartyChatCommand(List<string> arguments)
         {
+            if (current_party == null)
+            {
+                SendMessage("you aren't in a party", 2);
+                return true;
+            }
             party_chat = true;
             SendMessage("you are now in party chat", 1);
             return true;
@@ -75,27 +80,56 @@ namespace party_crab
 
                 client.EmitAsync("host", data);
             }
-
             if (arguments[1] == "disband")
             {
-                if (current_party != null){
-                    
-
+                if (current_party != null)
+                {
                     var data = new PartyIDDTO()
                     {
                         party_id = current_party.party_id
                     };
-
+                    var disbandData = new DisbandedDTO()
+                    {
+                        username = SteamManager.Instance.field_Private_String_0,
+                        party_id = current_party.party_id
+                    };
+                    client.EmitAsync("disbanded",disbandData);
                     client.EmitAsync("disband", data);
                 }
             }
 
-            if (arguments[1] == "demo") {
-                SendMessage("test");
-                SendMessage("Lualt: Hello, world!", 0);
-                SendMessage("created lobby", 1);
-                SendMessage("couldn't find user", 2);
+            if (arguments[1] == "join")
+            {
+                var data = new PartyIDDTO()
+                {
+                    party_id = arguments[2]
+                };
+                client.EmitAsync("join", data);
             }
+            if (arguments[1] == "leave")
+            {
+                if (current_party != null)
+                {
+                    var data = new PartyIDDTO()
+                    {
+                        party_id = current_party.party_id
+                    };
+                    var leftData = new JoinedDTO()
+                    {
+                        username = SteamManager.Instance.field_Private_String_0
+                    };
+                    if (current_party.party_host == client.Id)
+                    {
+                        client.EmitAsync("leave", data);
+                        return true;
+                    }
+                    client.EmitAsync("left", leftData);
+                    client.EmitAsync("leave", data);
+                }
+            }
+
+            if (arguments[1] == "list")
+                client.EmitAsync("partylist");
 
             return true;
         }
@@ -150,7 +184,7 @@ namespace party_crab
         [HarmonyPrefix]
         public static void OnMessage(ChatBox __instance, string __0)
         {
-            if (client_ready && party_chat)
+            if (client_ready && party_chat && current_party != null)
             {
                 var data = new MessageDTO
                 {

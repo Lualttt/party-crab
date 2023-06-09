@@ -15,7 +15,11 @@ namespace party_crab
 
             Plugin.client.OnDisconnected += (sender, e) =>
             {
+                Plugin.current_party = null;
                 Plugin.SendMessage("disconnected to party sever", 2);
+                Plugin.party_chat = false;
+                if (Plugin.party_chat)
+                    Plugin.SendMessage("you are now in all chat", 1);
             };
 
             ////////////////////////
@@ -27,6 +31,14 @@ namespace party_crab
                 {
                     Plugin.SendMessage($"created party; {response.data.party_id}", 1);
                 } else
+                {
+                    Plugin.SendMessage(response.data.error, 2);
+                }
+            });
+            Plugin.client.On("disband", data =>
+            {
+                var response = data.GetValue<DisbandResponseDTO>();
+                if (!response.successful)
                 {
                     Plugin.SendMessage(response.data.error, 2);
                 }
@@ -58,6 +70,20 @@ namespace party_crab
                 } else
                 {
                     Plugin.SendMessage(response.data.error, 2);
+                }
+            });
+            Plugin.client.On("leave", data =>
+            {
+                var response = data.GetValue<DisbandResponseDTO>();
+                if (!response.successful)
+                {
+                    Plugin.SendMessage(response.data.error, 2);
+                } else
+                {
+                    if (Plugin.party_chat)
+                        Plugin.SendMessage("you are now in all chat", 1);
+                    Plugin.current_party = null;
+                    Plugin.party_chat = false;
                 }
             });
 

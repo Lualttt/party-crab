@@ -18,6 +18,16 @@ namespace party_crab {
         public string error { get; set; }
     }
 
+    public class DisbandResponseDTO
+    {
+        public bool successful { get; set; }
+        public DisbandResponse data { get; set; }
+    }
+    public class DisbandResponse
+    {
+        public string error { get; set; }
+    }
+
     public class JoinResponseDTO
     {
         public bool successful { get; set; }
@@ -63,5 +73,11 @@ namespace party_crab {
         public bool   party_public { get; set; }
         public string party_host   { get; set; }
         public string party_id     { get; set; }
+    }
+
+    public class DisbandedDTO
+    {
+        public string username { get; set; }
+        public string party_id { get; set; }
     }
 }
