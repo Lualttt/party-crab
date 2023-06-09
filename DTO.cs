@@ -80,4 +80,22 @@ namespace party_crab {
         public string username { get; set; }
         public string party_id { get; set; }
     }
+
+    public class PartyListDTO
+    {
+        public int page { get; set; }
+    }
+    public class PartyListResponseDTO
+    {
+        public bool successful { get; set; }
+        public PartyListResponse data { get; set; }
+
+    }
+    public class PartyListResponse
+    {
+        public int page { get; set; }
+        public int max_page { get; set; }
+        public Party[] parties { get; set; }
+        public string error { get; set; }
+    }
 }

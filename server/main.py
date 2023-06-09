@@ -9,6 +9,7 @@ sio.attach(app)
 
 parties = {}
 users = {}
+names = {}
 
 ## DEV
 @sio.event
@@ -21,6 +22,14 @@ async def status(sid, data):
 ####################
 # PARTY MANAGEMENT #
 ####################
+
+@sio.event
+async def name(sid, data):
+    global users, parties
+
+    print(f"(name) {sid}: {data}")
+
+    names[sid] = data
 
 @sio.event
 async def host(sid, data):
@@ -259,15 +268,52 @@ async def promote(sid, data):
 async def partylist(sid, data):
     global users, parties
 
+    print(f"(partylist) {sid}: {data}")
+
     parties_list = [val|{"party_id":key} for key, val in parties.items() if val["party_public"] == True]
-    max_page = (len(parties_list) / 5) + 1
+    max_page = int((len(parties_list) / 5) + 1)
 
     if "page" not in data:
         page = 1
     else:
-        page = max(data["page"])
+        if type(data["page"]) != int:
+            print("^- wrong partylist data type")
+            await sio.emit("partylist", {"successful": False, "data": {"error": "wrong partylist data type"}}, room=sid)
+            return
+        page = max(1, min(max_page, data["page"]))
 
-    await sio.emit("partylist", {"successful": True, "data": {"parties": parties_list}})
+    parties_list = parties_list[page*4-4:page*4]
+
+    await sio.emit("partylist", {"successful": True, "data": {"page": page, "max_page": max_page, "parties": parties_list}}, room=sid)
+
+
+@sio.even
+async def userlist(sid, data):
+    global users, parties
+
+    print(f"(partylist) {sid}: {data}")
+
+    if sid not in users:
+        print("^ not in a party")
+        await sio.emit("userlist", {"successful": False, "data": {"error": "not in a party"}}, room=sid)
+        return
+
+    party_id = users[sid]
+    users_list = [{"name": names[key], "id": key[:6]} for key, val in users.items() if val == party_id]
+    max_page = int((len(users_list) / 5) + 1)
+
+    if "page" not in data:
+        page = 1
+    else:
+        if type(data["page"]) != int:
+            print("^- wrong userlist data type")
+            await sio.emit("userlist", {"successful": False, "data": {"error": "wrong userlist data type"}}, room=sid)
+            return
+        page = max(1, min(max_page, data["page"]))
+
+    users_list = users_list[page*4-4:page*4]
+
+    await sio.emit("userlist", {"successful": True, "data": {"page": page, "max_page": max_page, "parties": users_list}}, room=sid)
 
 ###################
 # ROOM MANAGEMENT #
@@ -384,6 +430,8 @@ async def disconnect(sid):
         await sio.emit("left", {"message": "somebody left the party"}, room=party_id)
         if sid in users:
             users.pop(sid)
+    if sid in names:
+        names.pop(sid)
 
 
 @sio.on("*")

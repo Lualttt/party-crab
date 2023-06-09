@@ -129,7 +129,17 @@ namespace party_crab
             }
 
             if (arguments[1] == "list")
-                client.EmitAsync("partylist");
+            {
+                var data = new PartyListDTO()
+                {
+                    page = 1
+                };
+                if (arguments.Count >= 3)
+                {
+                    data.page = int.Parse(arguments[2]);
+                }
+                client.EmitAsync("partylist", data);
+            }
 
             return true;
         }

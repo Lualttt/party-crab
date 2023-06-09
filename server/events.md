@@ -1,4 +1,9 @@
 
+**name**
+emit
+```json
+"<crab game username>"
+```
 **host**
 emit
 ```json
@@ -121,6 +126,42 @@ return
 	"successful": false,
 	"data": {
 		"error": "couldn't find user"
+	}
+}
+```
+---
+**partylist**
+emit
+```json
+{
+	"page": 1
+}
+```
+return
+```json
+{
+	"successful": true,
+	"data": {
+		"page": 1,
+		"max_page": 3,
+		"parties": [
+			{
+				"party_name": "<name>'s party",
+				"party_max": 6,
+				"party_count": 1,
+				"party_public": false,
+				"party_host": "<sid>",
+				"party_id": "<6 digit hex>"
+			}
+		]
+	}
+}
+```
+```json
+{
+	"successful": false,
+	"data": {
+		"error": "wrong partylist data type"
 	}
 }
 ```
