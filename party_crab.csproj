@@ -58,7 +58,7 @@
       <HintPath>$(BepInExDirectory)\unhollowed\Il2Cppmscorlib.dll</HintPath>
     </Reference>
     <Reference Include="qol-core">
-      <HintPath>$(BepInExDirectory)\plugins\qol-core-1.0.4.dll</HintPath>
+      <HintPath>$(BepInExDirectory)\plugins\qol-core-1.0.5.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>

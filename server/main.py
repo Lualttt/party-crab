@@ -71,6 +71,8 @@ async def host(sid, data):
 
 @sio.event
 async def disband(sid, data):
+    global users
+
     print(f"(disband) {sid}: {data}")
 
     # checks if "party_id" is in data
@@ -104,6 +106,7 @@ async def disband(sid, data):
         return
 
     parties.pop(data["party_id"])
+    users = {key:val for key, val in users.items() if val != data["party_id"]}
     await sio.emit("leave", {"successful": True, "data": {}}, room=data["party_id"])
     await sio.close_room(data["party_id"])
     await sio.emit("disband", {"successful": True, "data": {}})
@@ -144,7 +147,7 @@ async def join(sid, data):
     parties[data["party_id"]]["party_count"] += 1
     users[sid] = data["party_id"]
     sio.enter_room(sid, data["party_id"])
-    await sio.emit("join", {"successful": True, "data": parties[data["party_id"]]})
+    await sio.emit("join", {"successful": True, "data": parties[data["party_id"]] | {"party_id": data["party_id"]}})
 
 
 @sio.event
@@ -298,7 +301,7 @@ async def message(sid, data):
     if sid not in users:
         return
 
-    await sio.emit("message", {"username": username,"message": data["message"]}, room=users[sid])
+    await sio.emit("message", {"username": username,"message": data["message"]}, room=users[sid], skip_sid=sid)
 
 
 @sio.event
@@ -332,6 +335,7 @@ async def disconnect(sid):
 
         if parties[users[sid]]["party_host"] == sid:
             await sio.emit("disbanded", {"message": f"somebody disbanded the party"}, room=users[sid])
+            users = {key:val for key, val in users.items() if val != data["party_id"]}
             parties.pop(users[sid])
 
         await sio.emit("left", {"message": "somebody left the party"}, room=users[sid])

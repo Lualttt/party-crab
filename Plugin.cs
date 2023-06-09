@@ -14,7 +14,11 @@ namespace party_crab
         public static Mod modInstance;
         public static SocketIO client;
 
+        public static bool client_ready;
+
         public static string party_server = "localhost:8080";
+        public static Party current_party;
+        public static bool party_chat;
 
         public override void Load()
         {
@@ -24,7 +28,23 @@ namespace party_crab
 
             Commands.RegisterCommand("party", "party *", "The party command.", modInstance, PartyCommand);
 
+            Commands.RegisterCommand("ac", "ac", "Go into all chat.", modInstance, AllChatCommand);
+            Commands.RegisterCommand("pc", "pc", "Go into party chat.", modInstance, PartyChatCommand);
+
             Log.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+        }
+
+        public static bool AllChatCommand(List<string> arguments)
+        {
+            party_chat = false;
+            SendMessage("you are now in all chat", 1);
+            return true;
+        }
+        public static bool PartyChatCommand(List<string> arguments)
+        {
+            party_chat = true;
+            SendMessage("you are now in party chat", 1);
+            return true;
         }
 
         public static bool PartyCommand(List<string> arguments)
@@ -35,8 +55,39 @@ namespace party_crab
                 {
                     party_server = arguments[2];
                 }
+                if (client_ready)
+                {
+                    client_ready = false;
+                    client.Dispose();
+                }
                 SendMessage($"party server -> {party_server}", 1);
                 Client.Connect();
+            }
+
+            if (arguments[1] == "host")
+            {
+                var data = new HostDTO
+                {
+                    party_name = $"{SteamManager.Instance.field_Private_String_0}'s server",
+                    party_max = 6,
+                    party_public = false
+                };
+
+                client.EmitAsync("host", data);
+            }
+
+            if (arguments[1] == "disband")
+            {
+                if (current_party != null){
+                    
+
+                    var data = new PartyIDDTO()
+                    {
+                        party_id = current_party.party_id
+                    };
+
+                    client.EmitAsync("disband", data);
+                }
             }
 
             if (arguments[1] == "demo") {
@@ -59,12 +110,12 @@ namespace party_crab
             {
                 p_color = "<color=#f7df25>";
             }
-            // green
+                // green
             else if (value == 1)
             {
                 p_color = "<color=#09e827>";
             }
-            // red
+                // red
             else if (value == 2)
             {
                 p_color = "<color=#fa2f28>";
@@ -78,8 +129,9 @@ namespace party_crab
         [HarmonyPrefix]
         public static bool OnAppendMessage(ChatBox __instance)
         {
-            if (client.Connected)
-                return false;
+            if (client != null && party_chat)
+                if (client.Connected)
+                    return false;
             return true;
         }
 
@@ -88,8 +140,9 @@ namespace party_crab
         [HarmonyPrefix]
         public static bool OnSendMessage(ChatBox __instance)
         {
-            if (client.Connected)
-                return false;
+            if (client != null && party_chat)
+                if (client.Connected)
+                    return false;
             return true;
         }
 
@@ -97,13 +150,14 @@ namespace party_crab
         [HarmonyPrefix]
         public static void OnMessage(ChatBox __instance, string __0)
         {
-            if (client.Connected)
+            if (client_ready && party_chat)
             {
                 var data = new MessageDTO
                 {
-                    username = "Lualt",
+                    username = SteamManager.Instance.field_Private_String_0,
                     message = __0
                 };
+                SendMessage($"{data.username}: {data.message}", 0);
                 client.EmitAsync("message", data);
             }
         }
