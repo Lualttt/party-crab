@@ -98,4 +98,60 @@ namespace party_crab {
         public Party[] parties { get; set; }
         public string error { get; set; }
     }
+
+    public class UserListResponseDTO
+    {
+        public bool successful { get; set; }
+        public UserListResponse data { get; set; }
+    }
+    public class UserListResponse
+    {
+        public int page { get; set; }
+        public int max_page { get; set; }
+        public User[] users { get; set; }
+        public string error { get; set; }
+    }
+    public class User
+    {
+        public string name { get; set; }
+        public string id { get; set; }
+    }
+
+    public class PromoteDTO
+    {
+        public string party_id { get; set; }
+        public string new_host { get; set; }
+    }
+    public class PromoteResponse
+    {
+        public bool successful { get; set; }
+        public Promote data { get; set; }
+    }
+    public class Promote
+    {
+        public string error { get; set; }
+        public string new_host { get; set; }
+    }
+
+    public class PromotedDTO
+    {
+        public string old_host { get; set; }
+        public string new_host { get; set; }
+    }
+
+    public class WarpDTO
+    {
+        public string lobby_id { get; set; }
+    }
+    public class WarpResponseDTO
+    {
+        public bool successful { get; set; }
+        public WarpResponse data { get; set; }
+
+    }
+    public class WarpResponse
+    {
+        public string lobby_id { get; set; }
+        public string error { get; set; }
+    }
 }

@@ -1,5 +1,3 @@
-using System;
-using UnityEngine;
 using SocketIOClient;
 
 namespace party_crab
@@ -7,7 +5,7 @@ namespace party_crab
     public class Client {
         public static void Connect()
         {
-            Plugin.client = new SocketIO($"http://{Plugin.party_server}");
+            Plugin.client = new SocketIO(Plugin.party_server);
             
             Plugin.client.OnConnected += (sender, e) =>
             {
@@ -103,6 +101,50 @@ namespace party_crab
                     {
                         Plugin.SendMessage($"{party.party_name} ({party.party_count}/{party.party_max}) {party.party_id}", 1);
                     }
+                }
+            });
+            Plugin.client.On("userlist", data =>
+            {
+                var response = data.GetValue<UserListResponseDTO>();
+                if (!response.successful)
+                {
+                    Plugin.SendMessage(response.data.error, 2);
+                } else
+                {
+                    Plugin.SendMessage($"-=+# Users ({response.data.page}/{response.data.max_page}) #+=-", 1);
+                    foreach (User user in response.data.users)
+                    {
+                        Plugin.SendMessage($"{user.name}; {user.id}", 1);
+                    }
+                }
+            });
+
+            Plugin.client.On("promote", data =>
+            {
+                var response = data.GetValue<PromoteResponse>();
+                if (!response.successful)
+                {
+                    Plugin.SendMessage(response.data.error, 2);
+                } else
+                {
+                    var promotedData = new PromotedDTO()
+                    {
+                        old_host = SteamManager.Instance.field_Private_String_0,
+                        new_host = response.data.new_host
+                    };
+                    Plugin.client.EmitAsync("promoted", promotedData);
+                }
+            });
+
+            Plugin.client.On("warp", data =>
+            {
+                var response = data.GetValue<WarpResponseDTO>();
+                if (!response.successful)
+                {
+                    Plugin.SendMessage(response.data.error, 2);
+                } else
+                {
+                    Plugin.warp_lobby = response.data.lobby_id;
                 }
             });
 

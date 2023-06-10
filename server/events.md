@@ -118,7 +118,9 @@ return
 ```json
 {
 	"successful": true,
-	"data": {}
+	"data": {
+		"new_host": "<crab game username>"
+	}
 }
 ```
 ```json
@@ -162,6 +164,63 @@ return
 	"successful": false,
 	"data": {
 		"error": "wrong partylist data type"
+	}
+}
+```
+---
+**userlist**
+emit
+```json
+{
+	"page": 1
+}
+```
+return
+```json
+{
+	"successful": true,
+	"data": {
+		"page": 1,
+		"max_page": 3,
+		"users": [
+			{
+				"name": "<crab game username>",
+				"id": "sid"
+			}
+		]
+	}
+}
+```
+```json
+{
+	"successful": false,
+	"data": {
+		"error": "not in a party"
+	}
+}
+```
+---
+**warp**
+emit
+```json
+{
+	"lobby_id": "<lobby id>"
+}
+```
+return
+```json
+{
+	"sucessful": true,
+	"data": {
+		"lobby_id": "<lobby id>"
+	}
+}
+```
+```json
+{
+	"sucessful": false,
+	"data": {
+		"error": "you aren't the party host"
 	}
 }
 ```

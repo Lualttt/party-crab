@@ -1,9 +1,12 @@
+using System;
 using BepInEx;
 using BepInEx.IL2CPP;
 using HarmonyLib;
 using System.Collections.Generic;
 using qol_core;
 using SocketIOClient;
+using SteamworksNative;
+using UnityEngine;
 
 namespace party_crab
 {
@@ -16,9 +19,11 @@ namespace party_crab
 
         public static bool client_ready;
 
-        public static string party_server = "localhost:8080";
+        public static string party_server = "http://localhost:8080";
         public static Party current_party;
         public static bool party_chat;
+        public static string warp_lobby;
+        public static List<Tuple<string, int>> chat_buffer;
 
         public override void Load()
         {
@@ -141,6 +146,41 @@ namespace party_crab
                 client.EmitAsync("partylist", data);
             }
 
+            if (arguments[1] == "users")
+            {
+                var data = new PartyListDTO()
+                {
+                    page = 1
+                };
+                if (arguments.Count >= 3)
+                {
+                    data.page = int.Parse(arguments[2]);
+                }
+                client.EmitAsync("userlist", data);
+            }
+
+            if (arguments[1] == "promote")
+            {
+                if (arguments.Count >= 3 && current_party != null)
+                {
+                    var data = new PromoteDTO()
+                    {
+                        party_id = current_party.party_id,
+                        new_host = arguments[2]
+                    };
+                    client.EmitAsync("promote", data);
+                }
+            }
+
+            if (arguments[1] == "warp")
+            {
+                var data = new WarpDTO()
+                {
+                    lobby_id = SteamManager.Instance.currentLobby.m_SteamID.ToString()
+                };
+                client.EmitAsync("warp", data);
+            }
+
             return true;
         }
 
@@ -165,7 +205,10 @@ namespace party_crab
                 p_color = "<color=#fa2f28>";
             }
 
-            ChatBox.Instance.ForceMessage($"<color=#e563ff>(</color>{p_color}P</color><color=#e563ff>) {message}</color>");
+            if (ChatBox.Instance == null)
+                chat_buffer.Add(new Tuple<string, int>(message, value));
+            else
+                ChatBox.Instance.ForceMessage($"<color=#e563ff>(</color>{p_color}P</color><color=#e563ff>) {message}</color>");
         }
 
         [HarmonyPatch(typeof(ChatBox), nameof(ChatBox.AppendMessage))]
@@ -203,6 +246,38 @@ namespace party_crab
                 };
                 SendMessage($"{data.username}: {data.message}", 0);
                 client.EmitAsync("message", data);
+            }
+        }
+
+        [HarmonyPatch(typeof(ChatBox), nameof(ChatBox.Awake))]
+        [HarmonyPostfix]
+        public static void ChatAwake(ChatBox __instance)
+        {
+            if (chat_buffer.Count != 0) {
+                foreach(var message in chat_buffer)
+                {
+                    SendMessage(message.Item1, message.Item2);
+                }
+            }
+            chat_buffer = new List<Tuple<string, int>>();
+        }
+
+        [HarmonyPatch(typeof(SteamManager), nameof(SteamManager.Update))]
+        [HarmonyPostfix]
+        public static void Update(SteamManager __instance)
+        {
+            if (warp_lobby != null)
+            {
+                SteamManager.Instance.LeaveLobby();
+                CSteamID lobby_id = new CSteamID
+                {
+                    m_SteamID = ulong.Parse(warp_lobby)
+                };
+                SteamManager.Instance.JoinLobby(lobby_id);
+                warp_lobby = null;
+                SteamMatchmaking.RequestLobbyData(lobby_id);
+                string lobby_name = SteamMatchmaking.GetLobbyData(lobby_id, "LobbyName");
+                SendMessage($"warped too {lobby_name}", 1);
             }
         }
     }

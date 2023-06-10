@@ -11,14 +11,6 @@ parties = {}
 users = {}
 names = {}
 
-## DEV
-@sio.event
-async def status(sid, data):
-
-
-    print(parties)
-## DEV
-
 ####################
 # PARTY MANAGEMENT #
 ####################
@@ -229,7 +221,7 @@ async def promote(sid, data):
         return
 
     for user in users:
-        if user.endswith(data["new_host"]):
+        if user.startswith(data["new_host"]):
             new_host = user
             break
     else:
@@ -261,7 +253,7 @@ async def promote(sid, data):
         return
 
     parties[data["party_id"]]["party_host"] = new_host
-    await sio.emit("leave", {"successful": True, "data": {}}, room=sid)
+    await sio.emit("promote", {"successful": True, "data": {"new_host": names[new_host]}}, room=sid)
 
 
 @sio.event
@@ -287,7 +279,7 @@ async def partylist(sid, data):
     await sio.emit("partylist", {"successful": True, "data": {"page": page, "max_page": max_page, "parties": parties_list}}, room=sid)
 
 
-@sio.even
+@sio.event
 async def userlist(sid, data):
     global users, parties
 
@@ -313,7 +305,31 @@ async def userlist(sid, data):
 
     users_list = users_list[page*4-4:page*4]
 
-    await sio.emit("userlist", {"successful": True, "data": {"page": page, "max_page": max_page, "parties": users_list}}, room=sid)
+    await sio.emit("userlist", {"successful": True, "data": {"page": page, "max_page": max_page, "users": users_list}}, room=sid)
+
+
+@sio.event
+async def warp(sid, data):
+    global users, parties
+
+    print(f"(warp) {sid}: {data}")
+
+    if "lobby_id" not in data:
+        print("^- wrong warp format")
+        await sio.emit("warp", {"successful": False, "data": {"error": "wrong warp format"}}, room=sid)
+        return
+
+    if sid not in users:
+        print("^- not in a party")
+        await sio.emit("warp", {"successful": False, "data": {"error": "not in a party"}}, room=sid)
+        return
+
+    if parties[users[sid]]["party_host"] != sid:
+        print("^- you aren't the party host")
+        await sio.emit("warp", {"successful": False, "data": {"error": "you aren't the party host"}}, room=sid)
+        return
+
+    await sio.emit("warp", {"successful": True, "data": {"lobby_id": data["lobby_id"]}}, room=users[sid])
 
 ###################
 # ROOM MANAGEMENT #
@@ -403,6 +419,7 @@ async def promoted(sid, data):
         return
 
     await sio.emit("promoted", {"message": f"{old_host} promoted {new_host}"}, room=users[sid])
+
 
 #####
 
