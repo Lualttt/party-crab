@@ -1,4 +1,5 @@
 using SocketIOClient;
+using UnityEngine;
 
 namespace party_crab
 {
@@ -173,6 +174,11 @@ namespace party_crab
             Plugin.client.On("message", data =>
             {
                 Plugin.SendMessage($"{data.GetValue<MessageDTO>().username}: {data.GetValue<MessageDTO>().message}", 0);
+            });
+
+            Plugin.client.On("joinleave", data =>
+            {
+                Plugin.SendMessage(data.GetValue<ShortDTO>().message, 1);
             });
 
             Plugin.client.ConnectAsync();

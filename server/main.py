@@ -1,6 +1,7 @@
 from aiohttp import web
 import socketio
 import binascii
+import markup
 import os
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", ping_interval=10, ping_timeout=3)
@@ -401,6 +402,8 @@ async def message(sid, data):
     if sid not in users:
         return
 
+    data["message"] = markup.markup(data["message"])
+
     await sio.emit("message", {"username": username,"message": data["message"]}, room=users[sid], skip_sid=sid)
 
 
@@ -419,6 +422,25 @@ async def promoted(sid, data):
         return
 
     await sio.emit("promoted", {"message": f"{old_host} promoted {new_host}"}, room=users[sid])
+
+
+@sio.event
+async def joinleave(sid, data):
+    global users, parties
+
+    if "joinleave" not in data or "lobby_name" not in data:
+        return
+
+    if type(data["joinleave"]) != bool:
+        return
+
+    if sid not in users:
+        return
+
+    if data["lobby_name"] == "":
+        data["lobby_name"] = "a practice lobby"
+
+    await sio.emit("joinleave", {"message": f"{names[sid]} {'joined' if data['joinleave'] else 'left'} {data['lobby_name']}"}, room=users[sid])
 
 
 #####
@@ -465,4 +487,3 @@ if __name__ == "__main__":
 
 # POSSIBLE: while leaving promote someone else instead of disbanding the party
 # POSSIBLE: save crab game username so we never have the "somebody" problem
-# TODO: check if you are hosting a party while trying to leave

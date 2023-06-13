@@ -154,4 +154,10 @@ namespace party_crab {
         public string lobby_id { get; set; }
         public string error { get; set; }
     }
+
+    public class JoinLeaveDTO
+    {
+        public bool joinleave { get; set; }
+        public string lobby_name { get; set; }
+    }
 }

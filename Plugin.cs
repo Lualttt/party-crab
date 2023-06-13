@@ -3,6 +3,7 @@ using BepInEx;
 using BepInEx.IL2CPP;
 using HarmonyLib;
 using System.Collections.Generic;
+using System.Linq;
 using qol_core;
 using SocketIOClient;
 using SteamworksNative;
@@ -32,6 +33,7 @@ namespace party_crab
             modInstance = Mods.RegisterMod(PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION, "*party crab noise*");
 
             Commands.RegisterCommand("party", "party *", "The party command.", modInstance, PartyCommand);
+            Commands.RegisterCommand("p", "p *", "The party command.", modInstance, PartyCommand);
 
             Commands.RegisterCommand("ac", "ac", "Go into all chat.", modInstance, AllChatCommand);
             Commands.RegisterCommand("pc", "pc", "Go into party chat.", modInstance, PartyChatCommand);
@@ -41,6 +43,23 @@ namespace party_crab
 
         public static bool AllChatCommand(List<string> arguments)
         {
+            do {
+                if (arguments.Count >= 2)
+                {
+                    string message = String.Join(" ", arguments.Skip(1).ToArray());
+
+                    if (message == "")
+                        break;
+
+                    party_chat = false;
+                    ChatBox.Instance.AppendMessage(0ul, message, SteamManager.Instance.field_Private_String_0);
+                    ClientSend.SendChatMessage(message);
+                    party_chat = true;
+
+                    return true;
+                }
+            } while ( false );
+
             party_chat = false;
             SendMessage("you are now in all chat", 1);
             return true;
@@ -52,6 +71,30 @@ namespace party_crab
                 SendMessage("you aren't in a party", 2);
                 return true;
             }
+
+            do {
+                if (arguments.Count >= 2)
+                {
+                    string message = String.Join(" ", arguments.Skip(1).ToArray());
+
+                    if (message == "")
+                        break;
+
+                    var data = new MessageDTO
+                    {
+                        username = SteamManager.Instance.field_Private_String_0,
+                        message = message
+                    };
+
+                    party_chat = true;
+                    SendMessage($"{data.username}: {Markup.MarkupChange(message)}", 0);
+                    client.EmitAsync("message", data);
+                    party_chat = false;
+
+                    return true;
+                }
+            } while ( false );
+
             party_chat = true;
             SendMessage("you are now in party chat", 1);
             return true;
@@ -80,7 +123,7 @@ namespace party_crab
                 {
                     party_name = $"{SteamManager.Instance.field_Private_String_0}'s server",
                     party_max = 6,
-                    party_public = false
+                    party_public = true
                 };
 
                 client.EmitAsync("host", data);
@@ -205,10 +248,16 @@ namespace party_crab
                 p_color = "<color=#fa2f28>";
             }
 
-            if (ChatBox.Instance == null)
-                chat_buffer.Add(new Tuple<string, int>(message, value));
-            else
+            /*if (!GameObject.Find("ChatBox")) {
+                Tuple<string, int> message_value = new Tuple<string, int>(message, value);
+                chat_buffer.Add(message_value);
+            } else {
                 ChatBox.Instance.ForceMessage($"<color=#e563ff>(</color>{p_color}P</color><color=#e563ff>) {message}</color>");
+            }*/
+            //if (client is { Connected: true }) client.EmitAsync("debug", $"{value} {message}");
+            if (GameObject.Find("ChatBox")) {
+                ChatBox.Instance.ForceMessage($"<color=#e563ff>(</color>{p_color}P</color><color=#e563ff>) {message}</color>");
+            }
         }
 
         [HarmonyPatch(typeof(ChatBox), nameof(ChatBox.AppendMessage))]
@@ -237,14 +286,21 @@ namespace party_crab
         [HarmonyPrefix]
         public static void OnMessage(ChatBox __instance, string __0)
         {
+            if (__0 == "")
+                return;
             if (client_ready && party_chat && current_party != null)
             {
+                if ( __0.StartsWith("/pc"))
+                    return;
+
                 var data = new MessageDTO
                 {
                     username = SteamManager.Instance.field_Private_String_0,
                     message = __0
                 };
-                SendMessage($"{data.username}: {data.message}", 0);
+                __instance.inputField.text = "";
+                __instance.inputField.interactable = false;
+                SendMessage($"{data.username}: {Markup.MarkupChange(data.message)}", 0);
                 client.EmitAsync("message", data);
             }
         }
@@ -253,32 +309,91 @@ namespace party_crab
         [HarmonyPostfix]
         public static void ChatAwake(ChatBox __instance)
         {
-            if (chat_buffer.Count != 0) {
+            try {
                 foreach(var message in chat_buffer)
                 {
                     SendMessage(message.Item1, message.Item2);
+                    Debug.Log(message.Item1);
                 }
+                chat_buffer = new List<Tuple<string, int>>();
+            } catch (Exception e)
+            {
+                Debug.LogError(e.Message);
             }
-            chat_buffer = new List<Tuple<string, int>>();
         }
 
         [HarmonyPatch(typeof(SteamManager), nameof(SteamManager.Update))]
         [HarmonyPostfix]
         public static void Update(SteamManager __instance)
         {
-            if (warp_lobby != null)
-            {
-                SteamManager.Instance.LeaveLobby();
-                CSteamID lobby_id = new CSteamID
+            try {
+                if (warp_lobby != null)
                 {
-                    m_SteamID = ulong.Parse(warp_lobby)
+                    CSteamID lobby_id = new CSteamID
+                    {
+                        m_SteamID = ulong.Parse(warp_lobby)
+                    };
+
+                    SteamMatchmaking.RequestLobbyData(lobby_id);
+                    string lobby_name = SteamMatchmaking.GetLobbyData(lobby_id, "LobbyName");
+
+                    if (lobby_name == "")
+                        lobby_name = "a practice lobby";
+
+                    SendMessage($"warped too {lobby_name}", 1);
+
+                    if (lobby_id == __instance.currentLobby) {
+                        warp_lobby = null;
+                        return;
+                    }
+
+                    __instance.LeaveLobby();
+                    __instance.JoinLobby(lobby_id);
+
+                    warp_lobby = null;
+                }
+            } catch (Exception e)
+            {
+                Debug.LogError(e.Message);
+            }
+        }
+
+        [HarmonyPatch(typeof(SteamManager), nameof(SteamManager.LeaveLobby))]
+        [HarmonyPrefix]
+        public static void OnLeave(SteamManager __instance)
+        {
+            if (warp_lobby == null)
+            {
+                var data = new JoinLeaveDTO()
+                {
+                  joinleave = false,
+                  lobby_name = SteamMatchmaking.GetLobbyData(__instance.currentLobby, "LobbyName")
                 };
-                SteamManager.Instance.JoinLobby(lobby_id);
-                warp_lobby = null;
-                SteamMatchmaking.RequestLobbyData(lobby_id);
-                string lobby_name = SteamMatchmaking.GetLobbyData(lobby_id, "LobbyName");
-                SendMessage($"warped too {lobby_name}", 1);
+                client.EmitAsync("joinleave", data);
+            }
+        }
+
+        [HarmonyPatch(typeof(SteamManager), nameof(SteamManager.JoinLobby))]
+        [HarmonyPostfix]
+        public static void OnJoin(SteamManager __instance)
+        {
+            if (warp_lobby == null)
+            {
+                var data = new JoinLeaveDTO()
+                {
+                    joinleave = true,
+                    lobby_name = SteamMatchmaking.GetLobbyData(__instance.currentLobby, "LobbyName")
+                };
+                client.EmitAsync("joinleave", data);
             }
         }
     }
 }
+
+// TODO: on force-quit game make sure to close socketio connection
+// TODO: add chat buffering if there isnt a chat
+// TODO: allow only 1 client and make sure its fully disconnected before connecting
+// INFO: game crashes when warping people, and just randomly when receiving messages or something..?
+// TODO: "warped too" is still an empty message unlike "joined too xxx"
+// TOOD: /party kick, /party ban (and unban)
+// TODO: /party set <public> false
